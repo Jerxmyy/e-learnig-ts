@@ -1,42 +1,51 @@
 import './style.css'
 import typescriptLogo from './typescript.svg'
-import { loadCodeExample, executeCode, formatCodeForDisplay } from '@/lib/sandbox.ts'
-
+import {
+  loadCodeExample,
+  executeCode,
+  formatCodeForDisplay,
+  parseCodeIntoSections,
+} from '@/lib/sandbox.ts'
 
 // Concepts TypeScript avec descriptions et fichiers associés
 const concepts = [
   {
     id: 'inference',
     title: 'Inférence de Type',
-    description: 'TypeScript peut automatiquement inférer le type d\'une variable à partir de sa valeur initiale.',
+    description:
+      "TypeScript peut automatiquement inférer le type d'une variable à partir de sa valeur initiale.",
     icon: '🔍',
     filename: 'inference.ts',
   },
   {
     id: 'generic',
     title: 'Fonctions Génériques',
-    description: 'Les fonctions génériques permettent de créer des fonctions réutilisables qui fonctionnent avec différents types.',
+    description:
+      'Les fonctions génériques permettent de créer des fonctions réutilisables qui fonctionnent avec différents types.',
     icon: '⚙️',
     filename: 'generic.ts',
   },
   {
     id: 'void-never',
     title: 'Void et Never',
-    description: 'void indique qu\'une fonction ne retourne rien, never indique qu\'elle ne retournera jamais.',
+    description:
+      "void indique qu'une fonction ne retourne rien, never indique qu'elle ne retournera jamais.",
     icon: '🚫',
     filename: 'void-never.ts',
   },
   {
     id: 'enum',
     title: 'Enums',
-    description: 'Les enums permettent de définir un ensemble de constantes nommées pour un groupe de valeurs fixes.',
+    description:
+      'Les enums permettent de définir un ensemble de constantes nommées pour un groupe de valeurs fixes.',
     icon: '📋',
     filename: 'enum.ts',
   },
   {
     id: 'objects',
-    title: 'Types d\'Objets',
-    description: 'Différentes façons de typer des objets : interfaces, types, propriétés optionnelles, readonly.',
+    title: "Types d'Objets",
+    description:
+      'Différentes façons de typer des objets : interfaces, types, propriétés optionnelles, readonly.',
     icon: '📦',
     filename: 'object-types.ts',
   },
@@ -50,14 +59,16 @@ const concepts = [
   {
     id: 'functions',
     title: 'Fonctions',
-    description: 'Tout sur les fonctions : paramètres, types de retour, génériques, callbacks, async/await.',
+    description:
+      'Tout sur les fonctions : paramètres, types de retour, génériques, callbacks, async/await.',
     icon: '⚡',
     filename: 'functions.ts',
   },
   {
     id: 'utility-types',
     title: 'Types Utilitaires',
-    description: 'Partial, Record, Required et autres types utilitaires pour transformer des types.',
+    description:
+      'Partial, Record, Required et autres types utilitaires pour transformer des types.',
     icon: '🛠️',
     filename: 'utility-types.ts',
   },
@@ -71,16 +82,25 @@ const concepts = [
   {
     id: 'pick-omit',
     title: 'Pick et Omit',
-    description: 'Pick sélectionne des propriétés, Omit les exclut. Utiles pour créer de nouveaux types.',
+    description:
+      'Pick sélectionne des propriétés, Omit les exclut. Utiles pour créer de nouveaux types.',
     icon: '✂️',
     filename: 'pick-omit.ts',
+  },
+  {
+    id: 'functions-advanced',
+    title: 'Concepts Avancés de Fonctions',
+    description:
+      'Concepts avancés : déclarations de fonctions, paramètres optionnels, génériques complexes, surcharge, enums et alternatives modernes.',
+    icon: '🚀',
+    filename: 'functions-advanced.ts',
   },
 ]
 
 // Créer l'interface
 function createApp(): void {
   const app = document.querySelector<HTMLDivElement>('#app')!
-  
+
   app.innerHTML = `
     <div class="app-container">
       <header class="header">
@@ -97,12 +117,16 @@ function createApp(): void {
         <aside class="sidebar">
           <h2>Concepts</h2>
           <nav class="concept-nav">
-            ${concepts.map(concept => `
+            ${concepts
+              .map(
+                (concept) => `
               <button class="concept-btn" data-concept="${concept.id}">
                 <span class="concept-icon">${concept.icon}</span>
                 <span class="concept-title">${concept.title}</span>
               </button>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </nav>
         </aside>
 
@@ -126,14 +150,14 @@ function createApp(): void {
 
   // Gérer les boutons de concepts
   const conceptButtons = document.querySelectorAll<HTMLButtonElement>('.concept-btn')
-  conceptButtons.forEach(btn => {
+  conceptButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const conceptId = btn.dataset.concept
       if (conceptId) {
         showConcept(conceptId)
-        
+
         // Mettre à jour l'état actif
-        conceptButtons.forEach(b => b.classList.remove('active'))
+        conceptButtons.forEach((b) => b.classList.remove('active'))
         btn.classList.add('active')
       }
     })
@@ -149,11 +173,11 @@ function createApp(): void {
 }
 
 async function showConcept(conceptId: string): Promise<void> {
-  const concept = concepts.find(c => c.id === conceptId)
+  const concept = concepts.find((c) => c.id === conceptId)
   if (!concept) return
 
   const conceptDisplay = document.querySelector('.concept-display')!
-  
+
   // Afficher un loader pendant le chargement
   conceptDisplay.innerHTML = `
     <div class="concept-content">
@@ -169,55 +193,129 @@ async function showConcept(conceptId: string): Promise<void> {
   try {
     // Charger le code source
     const code = await loadCodeExample(concept.filename)
-    
-    // Afficher le sandbox
-    conceptDisplay.innerHTML = `
-      <div class="concept-content">
-        <div class="concept-header">
-          <span class="concept-icon-large">${concept.icon}</span>
-          <h2>${concept.title}</h2>
-        </div>
-        <p class="concept-description">${concept.description}</p>
-        
-        <div class="sandbox-container">
-          <div class="sandbox-header">
-            <h3>📝 Code Source</h3>
-            <button class="run-btn" data-concept="${conceptId}">
-              ▶️ Exécuter le code
+
+    // Vérifier si le fichier doit être divisé en sections (functions-advanced.ts)
+    const shouldUseSections = concept.filename === 'functions-advanced.ts'
+    const sections = shouldUseSections ? parseCodeIntoSections(code) : null
+
+    if (sections && sections.length > 1) {
+      // Afficher avec des sections multiples
+      const sectionsHtml = sections
+        .map(
+          (section, index) => `
+        <div class="section-container" data-section="${index}">
+          <div class="section-header">
+            <h3>📚 Section ${section.sectionNumber}: ${section.title}</h3>
+            <button class="run-btn" data-concept="${conceptId}" data-section="${index}">
+              ▶️ Exécuter cette section
             </button>
           </div>
           <div class="code-editor">
-            <pre class="code-block"><code>${formatCodeForDisplay(code)}</code></pre>
+            <pre class="code-block"><code>${formatCodeForDisplay(section.content)}</code></pre>
           </div>
-          
-          <div class="sandbox-results" id="sandbox-results-${conceptId}">
+          <div class="sandbox-results" id="sandbox-results-${conceptId}-${index}">
             <div class="results-header">
-              <h3>📊 Résultats</h3>
-              <button class="clear-results-btn" data-concept="${conceptId}">Effacer</button>
+              <h4>📊 Résultats</h4>
+              <button class="clear-results-btn" data-concept="${conceptId}" data-section="${index}">Effacer</button>
             </div>
-            <div class="results-content" id="results-content-${conceptId}">
-              <p class="results-placeholder">Cliquez sur "Exécuter le code" pour voir les résultats</p>
+            <div class="results-content" id="results-content-${conceptId}-${index}">
+              <p class="results-placeholder">Cliquez sur "Exécuter cette section" pour voir les résultats</p>
             </div>
           </div>
         </div>
-      </div>
-    `
+      `,
+        )
+        .join('')
 
-    // Ajouter les event listeners pour les boutons
-    const runBtn = conceptDisplay.querySelector(`.run-btn[data-concept="${conceptId}"]`)
-    const clearBtn = conceptDisplay.querySelector(`.clear-results-btn[data-concept="${conceptId}"]`)
-    const resultsContent = document.getElementById(`results-content-${conceptId}`)
+      conceptDisplay.innerHTML = `
+        <div class="concept-content">
+          <div class="concept-header">
+            <span class="concept-icon-large">${concept.icon}</span>
+            <h2>${concept.title}</h2>
+          </div>
+          <p class="concept-description">${concept.description}</p>
+          <div class="sections-container">
+            ${sectionsHtml}
+          </div>
+        </div>
+      `
 
-    if (runBtn && resultsContent) {
-      runBtn.addEventListener('click', () => {
-        executeSandboxCode(code, resultsContent)
+      // Ajouter les event listeners pour chaque section
+      sections.forEach((section, index) => {
+        const runBtn = conceptDisplay.querySelector(
+          `.run-btn[data-concept="${conceptId}"][data-section="${index}"]`,
+        )
+        const clearBtn = conceptDisplay.querySelector(
+          `.clear-results-btn[data-concept="${conceptId}"][data-section="${index}"]`,
+        )
+        const resultsContent = document.getElementById(`results-content-${conceptId}-${index}`)
+
+        if (runBtn && resultsContent) {
+          runBtn.addEventListener('click', () => {
+            executeSandboxCode(section.content, resultsContent)
+          })
+        }
+
+        if (clearBtn && resultsContent) {
+          clearBtn.addEventListener('click', () => {
+            resultsContent.innerHTML =
+              '<p class="results-placeholder">Cliquez sur "Exécuter cette section" pour voir les résultats</p>'
+          })
+        }
       })
-    }
+    } else {
+      // Afficher le sandbox unique (comportement par défaut)
+      conceptDisplay.innerHTML = `
+        <div class="concept-content">
+          <div class="concept-header">
+            <span class="concept-icon-large">${concept.icon}</span>
+            <h2>${concept.title}</h2>
+          </div>
+          <p class="concept-description">${concept.description}</p>
+          
+          <div class="sandbox-container">
+            <div class="sandbox-header">
+              <h3>📝 Code Source</h3>
+              <button class="run-btn" data-concept="${conceptId}">
+                ▶️ Exécuter le code
+              </button>
+            </div>
+            <div class="code-editor">
+              <pre class="code-block"><code>${formatCodeForDisplay(code)}</code></pre>
+            </div>
+            
+            <div class="sandbox-results" id="sandbox-results-${conceptId}">
+              <div class="results-header">
+                <h3>📊 Résultats</h3>
+                <button class="clear-results-btn" data-concept="${conceptId}">Effacer</button>
+              </div>
+              <div class="results-content" id="results-content-${conceptId}">
+                <p class="results-placeholder">Cliquez sur "Exécuter le code" pour voir les résultats</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
 
-    if (clearBtn && resultsContent) {
-      clearBtn.addEventListener('click', () => {
-        resultsContent.innerHTML = '<p class="results-placeholder">Cliquez sur "Exécuter le code" pour voir les résultats</p>'
-      })
+      // Ajouter les event listeners pour les boutons
+      const runBtn = conceptDisplay.querySelector(`.run-btn[data-concept="${conceptId}"]`)
+      const clearBtn = conceptDisplay.querySelector(
+        `.clear-results-btn[data-concept="${conceptId}"]`,
+      )
+      const resultsContent = document.getElementById(`results-content-${conceptId}`)
+
+      if (runBtn && resultsContent) {
+        runBtn.addEventListener('click', () => {
+          executeSandboxCode(code, resultsContent)
+        })
+      }
+
+      if (clearBtn && resultsContent) {
+        clearBtn.addEventListener('click', () => {
+          resultsContent.innerHTML =
+            '<p class="results-placeholder">Cliquez sur "Exécuter le code" pour voir les résultats</p>'
+        })
+      }
     }
   } catch (error) {
     conceptDisplay.innerHTML = `
@@ -257,23 +355,25 @@ function executeSandboxCode(code: string, resultsContainer: HTMLElement): void {
       </div>
     `
   } else {
-    const logsHtml = result.logs.map(log => {
-      const time = log.timestamp.toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit',
-        fractionalSecondDigits: 3
-      })
-      const typeClass = `log-${log.type}`
-      const formattedMessage = formatLogMessage(log.message)
-      return `
+    const logsHtml = result.logs
+      .map((log) => {
+        const time = log.timestamp.toLocaleTimeString('fr-FR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          fractionalSecondDigits: 3,
+        })
+        const typeClass = `log-${log.type}`
+        const formattedMessage = formatLogMessage(log.message)
+        return `
         <div class="log-entry ${typeClass}">
           <span class="log-time">[${time}]</span>
           <span class="log-type">${log.type.toUpperCase()}</span>
           <span class="log-message">${formattedMessage}</span>
         </div>
       `
-    }).join('')
+      })
+      .join('')
 
     resultsContainer.innerHTML = `
       <div class="logs-container">
@@ -289,7 +389,7 @@ function executeSandboxCode(code: string, resultsContainer: HTMLElement): void {
 function formatLogMessage(message: string): string {
   // Échapper le HTML
   let formatted = escapeHtml(message)
-  
+
   // Mettre en évidence les valeurs importantes
   formatted = formatted
     // Mettre en évidence les nombres
@@ -302,7 +402,7 @@ function formatLogMessage(message: string): string {
     .replace(/\b(null|undefined)\b/g, '<span class="log-null">$1</span>')
     // Mettre en évidence les objets/tableaux
     .replace(/(\{[^}]*\}|\[[^\]]*\])/g, '<span class="log-object">$1</span>')
-  
+
   return formatted
 }
 

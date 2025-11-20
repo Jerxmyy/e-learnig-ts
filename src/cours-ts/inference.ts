@@ -1,7 +1,7 @@
 /**
  * Inférence de Type en TypeScript
  *
- * ## Différence entre `var`, `let` et `const`
+ * ## Différence entre 'var', `let` et `const`
  *
  * ### `var`
  * - Crée une variable globale dont la déclaration serait poussée en haut du scope (hoisting)
