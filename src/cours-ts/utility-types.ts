@@ -188,12 +188,22 @@ type PartialUser = Partial<User>
 //   isActive?: boolean
 // }
 
+// Exemple d'utilisation de PartialUser
+const partialUserExample: PartialUser = { name: 'Test' }
+console.log('PartialUser example:', partialUserExample)
+
 // Record crée un nouveau type d'objet
 type UserMap = Record<string, User>
 // Équivalent à :
 // {
 //   [key: string]: User
 // }
+
+// Exemple d'utilisation de UserMap
+const userMapExample: UserMap = {
+  user1: { id: 1, name: 'Alice', email: 'alice@example.com', age: 30, isActive: true },
+}
+console.log('UserMap example:', userMapExample)
 
 /**
  * ## 4. Cas d'usage pratiques de Partial
@@ -279,6 +289,10 @@ function updateDatabaseUser(
   }
 }
 
+// Exemple d'utilisation de updateDatabaseUser
+const updatedDatabaseUser = updateDatabaseUser(1, { name: 'Updated Name', email: 'updated@example.com' })
+console.log('Updated database user:', updatedDatabaseUser)
+
 /**
  * ## 5. Cas d'usage pratiques de Record
  */
@@ -340,8 +354,11 @@ const translations: Translations = {
   },
 }
 
-console.log('French hello:', translations.fr.hello)
-console.log('English hello:', translations.en.hello)
+// Vérification de type pour éviter les erreurs "possibly undefined"
+if (translations.fr && translations.en) {
+  console.log('French hello:', translations.fr.hello)
+  console.log('English hello:', translations.en.hello)
+}
 
 // Cas 4 : Mapping de statuts
 type StatusMap = Record<'pending' | 'approved' | 'rejected', string>

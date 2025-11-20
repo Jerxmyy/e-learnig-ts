@@ -194,32 +194,40 @@ async function showConcept(conceptId: string): Promise<void> {
     // Charger le code source
     const code = await loadCodeExample(concept.filename)
 
-    // Vérifier si le fichier doit être divisé en sections (functions-advanced.ts)
-    const shouldUseSections = concept.filename === 'functions-advanced.ts'
-    const sections = shouldUseSections ? parseCodeIntoSections(code) : null
+    // Parser le code en sections (tous les fichiers)
+    const sections = parseCodeIntoSections(code)
 
     if (sections && sections.length > 1) {
-      // Afficher avec des sections multiples
+      // Afficher avec des sections multiples (avec accordéon)
       const sectionsHtml = sections
         .map(
           (section, index) => `
         <div class="section-container" data-section="${index}">
-          <div class="section-header">
-            <h3>📚 Section ${section.sectionNumber}: ${section.title}</h3>
-            <button class="run-btn" data-concept="${conceptId}" data-section="${index}">
-              ▶️ Exécuter cette section
-            </button>
-          </div>
-          <div class="code-editor">
-            <pre class="code-block"><code>${formatCodeForDisplay(section.content)}</code></pre>
-          </div>
-          <div class="sandbox-results" id="sandbox-results-${conceptId}-${index}">
-            <div class="results-header">
-              <h4>📊 Résultats</h4>
-              <button class="clear-results-btn" data-concept="${conceptId}" data-section="${index}">Effacer</button>
+          <div class="section-header" data-toggle-section="${index}">
+            <div class="section-title-wrapper">
+              <button class="section-toggle-btn" data-section="${index}" aria-label="Plier/Déplier la section">
+                <span class="toggle-icon">▼</span>
+              </button>
+              <h3>📚 Section ${section.sectionNumber}: ${section.title}</h3>
             </div>
-            <div class="results-content" id="results-content-${conceptId}-${index}">
-              <p class="results-placeholder">Cliquez sur "Exécuter cette section" pour voir les résultats</p>
+          </div>
+          <div class="section-content" id="section-content-${conceptId}-${index}" data-section="${index}">
+            <div class="code-editor">
+              <pre class="code-block"><code>${formatCodeForDisplay(section.content)}</code></pre>
+            </div>
+            <div class="sandbox-results" id="sandbox-results-${conceptId}-${index}">
+              <div class="results-header">
+                <h4>📊 Résultats</h4>
+                <div class="results-actions">
+                  <button class="run-btn" data-concept="${conceptId}" data-section="${index}">
+                    ▶️ Exécuter
+                  </button>
+                  <button class="clear-results-btn" data-concept="${conceptId}" data-section="${index}">Effacer</button>
+                </div>
+              </div>
+              <div class="results-content" id="results-content-${conceptId}-${index}">
+                <p class="results-placeholder">Cliquez sur "Exécuter" pour voir les résultats</p>
+              </div>
             </div>
           </div>
         </div>
@@ -249,17 +257,74 @@ async function showConcept(conceptId: string): Promise<void> {
           `.clear-results-btn[data-concept="${conceptId}"][data-section="${index}"]`,
         )
         const resultsContent = document.getElementById(`results-content-${conceptId}-${index}`)
+        const toggleBtn = conceptDisplay.querySelector(
+          `.section-toggle-btn[data-section="${index}"]`,
+        )
+        const sectionHeader = conceptDisplay.querySelector(`[data-toggle-section="${index}"]`)
+        const sectionContent = document.getElementById(`section-content-${conceptId}-${index}`)
+
+        // Gérer le pliage/dépliage de la section
+        if (toggleBtn && sectionContent) {
+          // Par défaut, la première section est ouverte, les autres sont fermées
+          if (index === 0) {
+            sectionContent.classList.add('expanded')
+            toggleBtn.querySelector('.toggle-icon')!.textContent = '▼'
+          } else {
+            sectionContent.classList.add('collapsed')
+            toggleBtn.querySelector('.toggle-icon')!.textContent = '▶'
+          }
+
+          const toggleSection = () => {
+            const isExpanded = sectionContent.classList.contains('expanded')
+            const toggleIcon = toggleBtn.querySelector('.toggle-icon')!
+
+            if (isExpanded) {
+              sectionContent.classList.remove('expanded')
+              sectionContent.classList.add('collapsed')
+              toggleIcon.textContent = '▶'
+            } else {
+              sectionContent.classList.remove('collapsed')
+              sectionContent.classList.add('expanded')
+              toggleIcon.textContent = '▼'
+            }
+          }
+
+          toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            toggleSection()
+          })
+
+          // Permettre de cliquer sur tout le header pour plier/déplier
+          if (sectionHeader) {
+            sectionHeader.addEventListener('click', (e) => {
+              // Ne pas déclencher si on clique sur le bouton run
+              if ((e.target as HTMLElement).closest('.run-btn')) {
+                return
+              }
+              toggleSection()
+            })
+            ;(sectionHeader as HTMLElement).style.cursor = 'pointer'
+          }
+        }
 
         if (runBtn && resultsContent) {
           runBtn.addEventListener('click', () => {
             executeSandboxCode(section.content, resultsContent)
+            // S'assurer que la section est ouverte quand on exécute
+            if (sectionContent && sectionContent.classList.contains('collapsed')) {
+              sectionContent.classList.remove('collapsed')
+              sectionContent.classList.add('expanded')
+              if (toggleBtn) {
+                toggleBtn.querySelector('.toggle-icon')!.textContent = '▼'
+              }
+            }
           })
         }
 
         if (clearBtn && resultsContent) {
           clearBtn.addEventListener('click', () => {
             resultsContent.innerHTML =
-              '<p class="results-placeholder">Cliquez sur "Exécuter cette section" pour voir les résultats</p>'
+              '<p class="results-placeholder">Cliquez sur "Exécuter" pour voir les résultats</p>'
           })
         }
       })
@@ -276,9 +341,6 @@ async function showConcept(conceptId: string): Promise<void> {
           <div class="sandbox-container">
             <div class="sandbox-header">
               <h3>📝 Code Source</h3>
-              <button class="run-btn" data-concept="${conceptId}">
-                ▶️ Exécuter le code
-              </button>
             </div>
             <div class="code-editor">
               <pre class="code-block"><code>${formatCodeForDisplay(code)}</code></pre>
@@ -287,10 +349,13 @@ async function showConcept(conceptId: string): Promise<void> {
             <div class="sandbox-results" id="sandbox-results-${conceptId}">
               <div class="results-header">
                 <h3>📊 Résultats</h3>
-                <button class="clear-results-btn" data-concept="${conceptId}">Effacer</button>
+                <div class="results-actions">
+                  <button class="run-btn" data-concept="${conceptId}">▶️ Exécuter</button>
+                  <button class="clear-results-btn" data-concept="${conceptId}">Effacer</button>
+                </div>
               </div>
               <div class="results-content" id="results-content-${conceptId}">
-                <p class="results-placeholder">Cliquez sur "Exécuter le code" pour voir les résultats</p>
+                <p class="results-placeholder">Cliquez sur "Exécuter" pour voir les résultats</p>
               </div>
             </div>
           </div>

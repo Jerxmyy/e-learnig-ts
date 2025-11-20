@@ -57,6 +57,7 @@ console.log('Type EventHandler:', typeof handleClick)
 let result: void
 // result = 5 // ❌ Erreur : on ne peut assigner que undefined à void
 result = undefined // ✅ OK
+console.log('Variable void result:', result)
 
 /**
  * ## `never` - Fonction qui ne retourne JAMAIS (ou type qui ne peut jamais exister)

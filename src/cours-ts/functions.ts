@@ -31,7 +31,10 @@ function throwError(message: string): never {
 
 // Exemple d'utilisation (commenté pour ne pas lancer d'erreur)
 // throwError('Une erreur') // Lance une exception
-console.log('throwError function defined')
+console.log('throwError function defined:', typeof throwError)
+
+// Démonstration du type never (commenté car ne peut pas être exécuté)
+// const neverExample: never = throwError('test') // Cette ligne ne peut jamais être atteinte
 
 /**
  * ## 2. Fonction fléchée (Arrow Function)
@@ -179,6 +182,9 @@ const handleClick: EventHandler = (event) => {
 
 // Exemple d'utilisation (simulé)
 // document.addEventListener('click', handleClick)
+
+// Démonstration du type EventHandler
+console.log('Type EventHandler:', typeof handleClick)
 console.log('handleClick function defined')
 
 /**
@@ -332,6 +338,9 @@ async function displayData(): Promise<void> {
 // Exemple d'utilisation (commenté pour ne pas bloquer)
 // displayData() // Décommentez pour tester
 
+// Démonstration de la fonction displayData
+console.log('displayData function defined:', typeof displayData)
+
 // Fonction async avec gestion d'erreur
 async function safeFetch(url: string): Promise<string | null> {
   try {
@@ -342,6 +351,9 @@ async function safeFetch(url: string): Promise<string | null> {
     return null
   }
 }
+
+// Démonstration de la fonction safeFetch
+console.log('safeFetch function defined:', typeof safeFetch)
 
 // Exemple d'utilisation (commenté)
 // safeFetch('https://api.example.com').then(result => console.log('Safe fetch result:', result))

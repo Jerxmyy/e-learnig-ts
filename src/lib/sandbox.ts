@@ -63,19 +63,21 @@ export async function loadCodeExample(filename: string): Promise<string> {
 /**
  * Parse un fichier TypeScript en sections basées sur les commentaires SECTION
  * Retourne un tableau de sections avec leur titre et contenu
+ * Supporte deux formats :
+ * 1. // ============================================================================ // SECTION X: Titre // ============================================================================
+ * 2. /** * ## X. Titre (dans les commentaires JSDoc)
  */
 export function parseCodeIntoSections(code: string): CodeSection[] {
-  // Pattern pour détecter les sections : // ============================================================================
-  // // SECTION X: Titre
-  // // ============================================================================
-  const sectionPattern = /\/\/\s*={60,}\s*\n\/\/\s*SECTION\s+(\d+):\s*(.+?)\s*\n\/\/\s*={60,}/g
-
   const sections: CodeSection[] = []
   const matches: Array<{ num: number; title: string; index: number; endIndex: number }> = []
 
-  // Trouver toutes les sections
+  // Pattern 1 : Format avec // ============================================================================
+  // // SECTION X: Titre
+  // // ============================================================================
+  const sectionPattern1 = /\/\/\s*={60,}\s*\n\/\/\s*SECTION\s+(\d+):\s*(.+?)\s*\n\/\/\s*={60,}/g
+
   let match: RegExpExecArray | null
-  while ((match = sectionPattern.exec(code)) !== null) {
+  while ((match = sectionPattern1.exec(code)) !== null) {
     const sectionNum = match[1] ? parseInt(match[1], 10) : 0
     const sectionTitle = match[2] ? match[2].trim() : 'Section'
     matches.push({
@@ -85,6 +87,50 @@ export function parseCodeIntoSections(code: string): CodeSection[] {
       endIndex: match.index + match[0].length,
     })
   }
+
+  // Pattern 2 : Format avec /** * ## X. Titre (dans les commentaires JSDoc)
+  // Cherche /** suivi de * ## X. Titre
+  // Le pattern cherche le début du commentaire JSDoc et la ligne avec ## X.
+  const sectionPattern2 = /\/\*\*[\s\S]*?\*\s*##\s*(\d+)\.\s*([^\n\*]+?)(?:\s*\n|\s*\*)/g
+
+  // Réinitialiser le regex pour le deuxième pattern
+  sectionPattern2.lastIndex = 0
+  let match2: RegExpExecArray | null
+  while ((match2 = sectionPattern2.exec(code)) !== null) {
+    const sectionNum = match2[1] ? parseInt(match2[1], 10) : 0
+    const sectionTitle = match2[2] ? match2[2].trim() : 'Section'
+
+    // Trouver le début du commentaire JSDoc (/**)
+    let docStart = match2.index
+    while (docStart > 0 && code[docStart] !== '/') {
+      docStart--
+    }
+
+    // Trouver la fin du commentaire JSDoc (*/)
+    // Chercher depuis la position du match jusqu'à la fin du commentaire
+    let docEnd = match2.index + match2[0].length
+    while (docEnd < code.length) {
+      if (code[docEnd] === '*' && docEnd + 1 < code.length && code[docEnd + 1] === '/') {
+        docEnd += 2
+        break
+      }
+      docEnd++
+    }
+    // Si on n'a pas trouvé la fin, prendre jusqu'à la fin du match
+    if (docEnd >= code.length) {
+      docEnd = match2.index + match2[0].length
+    }
+
+    matches.push({
+      num: sectionNum,
+      title: sectionTitle,
+      index: docStart,
+      endIndex: docEnd,
+    })
+  }
+
+  // Trier les matches par position dans le fichier
+  matches.sort((a, b) => a.index - b.index)
 
   // Si aucune section trouvée, retourner le code entier comme une seule section
   if (matches.length === 0) {
@@ -143,12 +189,31 @@ function cleanCodeForExecution(code: string): string {
 
   // Supprimer les déclarations de type/interface qui ne peuvent pas être exécutées
   // Format: type Name = ... ou interface Name { ... }
-  cleaned = cleaned.replace(/^(type|interface)\s+\w+[^=]*=\s*[^;]+;?/gm, '')
-  cleaned = cleaned.replace(/^(type|interface)\s+\w+\s*\{[\s\S]*?\}\s*$/gm, '')
+  // Gère les types avec objets: type Counter = { val: number }
+  // Gère les types avec unions: type Status = 'pending' | 'approved'
+  // Gère les interfaces: interface User { ... }
+  // IMPORTANT: Doit être fait AVANT de supprimer les annotations de type dans les variables
+
+  // Pattern unifié pour supprimer toutes les déclarations de type/interface
+  // Capture: type/interface + nom + = { ... } ou = ... ou { ... }
+  // Gère les cas avec ou sans point-virgule, multilignes, espaces en début de ligne, etc.
+  // Le pattern accepte des espaces optionnels en début de ligne
+  cleaned = cleaned.replace(
+    /^\s*(type|interface)\s+\w+(\s*=\s*\{[\s\S]*?\}|\s*=\s*[^;{]+|\s*\{[\s\S]*?\})\s*;?\s*$/gm,
+    '',
+  )
 
   // Supprimer les génériques dans les déclarations de fonction : function test<T>(...) -> function test(...)
   // Attention: ne pas supprimer les opérateurs de comparaison < et >
   cleaned = cleaned.replace(/(function\s+\w+)\s*<[A-Z]\w*(?:,\s*[A-Z]\w*)*>/g, '$1')
+
+  // Supprimer les génériques dans les appels de fonctions : identity<number>(42) -> identity(42)
+  // Pattern: nomFonction<Type>(args) ou nomFonction<Type1, Type2>(args)
+  // Supporte tous les types (primitifs et personnalisés)
+  // Attention: ne pas supprimer les opérateurs de comparaison < et > dans les expressions
+  // On cherche spécifiquement les patterns où <...> est suivi de ( pour éviter les faux positifs
+  // Le pattern \w+<[^>]+>\s*\( capture: identifiant + <contenu> + (
+  cleaned = cleaned.replace(/(\w+)\s*<[^>]+>\s*\(/g, '$1(')
   cleaned = cleaned.replace(
     /(const\s+\w+\s*:\s*\([^)]*\)\s*=>)\s*<[A-Z]\w*(?:,\s*[A-Z]\w*)*>/g,
     '$1',
@@ -158,7 +223,7 @@ function cleanCodeForExecution(code: string): string {
   // Exemple: function test(x: number, y: string) -> function test(x, y)
   // Gérer aussi: function test(this: Type, x: number) -> function test(x)
   // Gérer les paramètres rest: ...args: number[] -> ...args
-  cleaned = cleaned.replace(/function\s+(\w+)\s*\(([^)]*)\)/g, (match, funcName, params) => {
+  cleaned = cleaned.replace(/function\s+(\w+)\s*\(([^)]*)\)/g, (_match, funcName, params) => {
     if (!params.trim()) return `function ${funcName}()`
 
     // Nettoyer les paramètres : supprimer les types et les paramètres "this: Type"
@@ -195,7 +260,15 @@ function cleanCodeForExecution(code: string): string {
   })
 
   // Nettoyer aussi les fonctions fléchées : (x: number, y: string) => ...
-  cleaned = cleaned.replace(/\(([^)]*)\)\s*=>/g, (match, params) => {
+  // Gère aussi les annotations de type de retour : (n: number): void => ...
+  // On doit d'abord supprimer les types de retour avant de nettoyer les paramètres
+  cleaned = cleaned.replace(
+    /\)\s*:\s*(?:void|never|string|number|boolean|any|unknown|[\w\s|&<>[\]()]+)\s*=>/g,
+    ') =>',
+  )
+
+  // Ensuite, nettoyer les paramètres des fonctions fléchées
+  cleaned = cleaned.replace(/\(([^)]*)\)\s*=>/g, (_match, params) => {
     if (!params.trim()) return '() =>'
 
     const cleanedParams = params
@@ -237,8 +310,16 @@ function cleanCodeForExecution(code: string): string {
   // Supprimer les annotations de type dans les déclarations de variables
   // Exemple: const x: number = 5 -> const x = 5
   // Gérer aussi: let x: string | number = 'test' -> let x = 'test'
+  // Gérer les types personnalisés: const h: Counter = { val: 0 } -> const h = { val: 0 }
+  // Gérer les déclarations sans initialisation: let result: void -> let result
   // Ne pas matcher si c'est déjà une fonction fléchée typée (déjà traitée ci-dessus)
-  cleaned = cleaned.replace(/(const|let|var)\s+(\w+)\s*:\s*[^=]+(\s*=)/g, '$1 $2$3')
+
+  // Pattern 1: Variables avec initialisation (const x: number = 5)
+  cleaned = cleaned.replace(/(const|let|var)\s+(\w+)\s*:\s*[^=\n]+(\s*=)/g, '$1 $2$3')
+
+  // Pattern 2: Variables sans initialisation (let result: void)
+  // Capture jusqu'à la fin de la ligne ou jusqu'à un point-virgule
+  cleaned = cleaned.replace(/(const|let|var)\s+(\w+)\s*:\s*[^=\n;]+(;|\n|$)/g, '$1 $2$3')
 
   // Supprimer les "as const", "as number", etc. (assertions de type)
   cleaned = cleaned.replace(

@@ -19,12 +19,15 @@
  */
 
 // Enum numérique simple (commence à 0)
-enum Direction {
-  North, // 0
-  East,  // 1
-  South, // 2
-  West,  // 3
-}
+// Note: Avec erasableSyntaxOnly activé, on utilise une alternative avec objet constant
+const Direction = {
+  North: 0,
+  East: 1,
+  South: 2,
+  West: 3,
+} as const
+
+type Direction = (typeof Direction)[keyof typeof Direction]
 
 console.log('Direction.North =', Direction.North) // 0
 console.log('Direction.East =', Direction.East)   // 1
@@ -34,12 +37,14 @@ let playerDirection: Direction = Direction.North
 console.log('Direction du joueur:', playerDirection)
 
 // Enum avec valeurs personnalisées
-enum StatusCode {
-  OK = 200,
-  NotFound = 404,
-  ServerError = 500,
-  BadRequest = 400,
-}
+const StatusCode = {
+  OK: 200,
+  NotFound: 404,
+  ServerError: 500,
+  BadRequest: 400,
+} as const
+
+type StatusCode = (typeof StatusCode)[keyof typeof StatusCode]
 
 console.log('StatusCode.OK =', StatusCode.OK) // 200
 console.log('StatusCode.NotFound =', StatusCode.NotFound) // 404
@@ -64,12 +69,14 @@ console.log(handleResponse(StatusCode.OK))
 console.log(handleResponse(StatusCode.NotFound))
 
 // Enum avec valeurs partiellement définies
-enum Priority {
-  Low = 1,
-  Medium,    // 2 (incrémenté automatiquement)
-  High,      // 3
-  Critical,  // 4
-}
+const Priority = {
+  Low: 1,
+  Medium: 2,    // 2 (incrémenté manuellement)
+  High: 3,      // 3
+  Critical: 4,  // 4
+} as const
+
+type Priority = (typeof Priority)[keyof typeof Priority]
 
 console.log('Priority.Low =', Priority.Low)     // 1
 console.log('Priority.Medium =', Priority.Medium) // 2
@@ -82,11 +89,13 @@ console.log('Priority.High =', Priority.High)   // 3
  * Ils sont plus lisibles et ne peuvent pas être inversés (pas de reverse mapping).
  */
 
-enum Color {
-  Red = 'RED',
-  Green = 'GREEN',
-  Blue = 'BLUE',
-}
+const Color = {
+  Red: 'RED',
+  Green: 'GREEN',
+  Blue: 'BLUE',
+} as const
+
+type Color = (typeof Color)[keyof typeof Color]
 
 console.log('Color.Red =', Color.Red) // "RED"
 
@@ -110,11 +119,13 @@ console.log('Hex de Red:', getColorHex(Color.Red))
  * Bien que possible, ce n'est généralement pas recommandé.
  */
 
-enum MixedEnum {
-  No = 0,
-  Yes = 'YES',
-  Maybe = 2,
-}
+const MixedEnum = {
+  No: 0,
+  Yes: 'YES',
+  Maybe: 2,
+} as const
+
+type MixedEnum = (typeof MixedEnum)[keyof typeof MixedEnum]
 
 console.log('MixedEnum.No =', MixedEnum.No)     // 0
 console.log('MixedEnum.Yes =', MixedEnum.Yes)   // "YES"
@@ -127,53 +138,66 @@ console.log('MixedEnum.Maybe =', MixedEnum.Maybe) // 2
  * Cela permet d'accéder au nom de l'enum à partir de sa valeur.
  */
 
-enum Weekday {
-  Monday = 1,
-  Tuesday,
-  Wednesday,
-  Thursday,
-  Friday,
-  Saturday,
-  Sunday,
+const Weekday = {
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+  Sunday: 7,
+} as const
+
+type Weekday = (typeof Weekday)[keyof typeof Weekday]
+
+// Fonction helper pour le reverse mapping (simulation)
+function getWeekdayName(value: Weekday): string {
+  const entries = Object.entries(Weekday) as [string, Weekday][]
+  const found = entries.find(([, v]) => v === value)
+  return found ? found[0] : 'Unknown'
 }
 
 console.log('Weekday.Monday =', Weekday.Monday)           // 1
-console.log('Weekday[1] =', Weekday[1])                    // "Monday" (reverse mapping)
-console.log('Weekday[Weekday.Monday] =', Weekday[Weekday.Monday]) // "Monday"
+console.log('getWeekdayName(1) =', getWeekdayName(1))     // "Monday" (reverse mapping simulé)
+console.log('getWeekdayName(Weekday.Monday) =', getWeekdayName(Weekday.Monday)) // "Monday"
 
 // ⚠️ Les enums de chaînes n'ont PAS de reverse mapping
 // Color['RED'] // ❌ undefined
 
 /**
- * ## 5. Enum const (const enum)
+ * ## 5. Alternative moderne : Objet constant (simule const enum)
  *
- * Les const enums sont supprimés à la compilation et remplacés par leurs valeurs.
- * Ils ne créent pas d'objet JavaScript, ce qui réduit la taille du code.
+ * Les objets constants avec "as const" sont une alternative moderne aux const enums.
+ * Ils sont éliminés par le tree-shaking et offrent une meilleure compatibilité.
  */
 
-const enum Size {
-  Small = 'S',
-  Medium = 'M',
-  Large = 'L',
-  XLarge = 'XL',
-}
+const Size = {
+  Small: 'S',
+  Medium: 'M',
+  Large: 'L',
+  XLarge: 'XL',
+} as const
+
+type Size = (typeof Size)[keyof typeof Size]
 
 // Utilisation normale
 const mySize: Size = Size.Medium
 console.log('Taille:', mySize)
 
-// ⚠️ Les const enums ne peuvent pas être utilisés avec Object.keys() ou Object.values()
-// car ils n'existent pas à l'exécution
+// ✅ Les objets constants peuvent être utilisés avec Object.keys() ou Object.values()
+console.log('Toutes les tailles:', Object.values(Size))
 
 /**
  * ## 6. Utilisation pratique : Gestion d'états
  */
 
-enum UserRole {
-  Admin = 'ADMIN',
-  User = 'USER',
-  Guest = 'GUEST',
-}
+const UserRole = {
+  Admin: 'ADMIN',
+  User: 'USER',
+  Guest: 'GUEST',
+} as const
+
+type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 type User = {
   id: number
@@ -191,8 +215,14 @@ function hasAdminAccess(user: User): boolean {
   return user.role === UserRole.Admin
 }
 
-console.log('Alice a accès admin?', hasAdminAccess(users[0]))
-console.log('Bob a accès admin?', hasAdminAccess(users[1]))
+// Vérification de type pour éviter les erreurs undefined
+const alice = users[0]
+const bob = users[1]
+
+if (alice && bob) {
+  console.log('Alice a accès admin?', hasAdminAccess(alice))
+  console.log('Bob a accès admin?', hasAdminAccess(bob))
+}
 
 /**
  * ## 7. Comparaison avec les alternatives
@@ -201,17 +231,27 @@ console.log('Bob a accès admin?', hasAdminAccess(users[1]))
 // Alternative 1 : Union de types littéraux
 type Status = 'pending' | 'approved' | 'rejected'
 
-// Alternative 2 : Enum
-enum StatusEnum {
-  Pending = 'pending',
-  Approved = 'approved',
-  Rejected = 'rejected',
-}
+// Exemple d'utilisation de Status
+const currentStatusUnion: Status = 'pending'
+console.log('Status (union type):', currentStatusUnion)
 
-// Les deux approches sont valides, mais les enums offrent :
+// Alternative 2 : Objet constant (simule enum)
+const StatusEnum = {
+  Pending: 'pending',
+  Approved: 'approved',
+  Rejected: 'rejected',
+} as const
+
+type StatusEnum = (typeof StatusEnum)[keyof typeof StatusEnum]
+
+// Exemple d'utilisation
+const currentStatus: StatusEnum = StatusEnum.Pending
+console.log('Status actuel (enum-like):', currentStatus)
+
+// Les deux approches sont valides, mais les objets constants offrent :
 // - Un namespace pour regrouper les valeurs
 // - Autocomplétion améliorée
-// - Possibilité de reverse mapping (pour les enums numériques)
+// - Meilleure compatibilité avec erasableSyntaxOnly
 
 /**
  * ## 8. Bonnes pratiques
@@ -231,19 +271,23 @@ enum StatusEnum {
  * ## 9. Exemple complet : Système de commande
  */
 
-enum OrderStatus {
-  Pending = 'PENDING',
-  Processing = 'PROCESSING',
-  Shipped = 'SHIPPED',
-  Delivered = 'DELIVERED',
-  Cancelled = 'CANCELLED',
-}
+const OrderStatus = {
+  Pending: 'PENDING',
+  Processing: 'PROCESSING',
+  Shipped: 'SHIPPED',
+  Delivered: 'DELIVERED',
+  Cancelled: 'CANCELLED',
+} as const
 
-enum PaymentMethod {
-  CreditCard = 1,
-  PayPal = 2,
-  BankTransfer = 3,
-}
+type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+
+const PaymentMethod = {
+  CreditCard: 1,
+  PayPal: 2,
+  BankTransfer: 3,
+} as const
+
+type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod]
 
 type Order = {
   id: number
