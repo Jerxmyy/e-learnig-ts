@@ -170,11 +170,13 @@ TSGuide/
 ## 🔌 Architecture Future
 
 ### Frontend (Actuel)
+
 - Interface utilisateur interactive
 - Sandbox d'exécution de code
 - Affichage des cours et exemples
 
 ### Backend (À venir)
+
 - **API REST** : Gestion des utilisateurs, progression, exercices
 - **Base de données** : Stockage des profils, progression, solutions d'exercices
 - **Système d'évaluation** : Validation automatique des exercices TypeScript
@@ -205,24 +207,28 @@ TSGuide/
 ## 🛣️ Roadmap
 
 ### Phase 1 : Interface de base (✅ Actuelle)
+
 - [x] Interface utilisateur avec navigation
 - [x] Sandbox interactifs
 - [x] Exécution de code en temps réel
 - [x] 10 concepts TypeScript de base
 
 ### Phase 2 : Backend et Authentification (🔄 À venir)
+
 - [ ] API REST pour la gestion des utilisateurs
 - [ ] Système d'authentification
 - [ ] Base de données pour stocker la progression
 - [ ] Intégration frontend-backend
 
 ### Phase 3 : Exercices et Progression (📋 Planifié)
+
 - [ ] Système d'exercices avec validation automatique
 - [ ] Suivi de progression par utilisateur
 - [ ] Dashboard de statistiques personnelles
 - [ ] Système de badges et récompenses
 
 ### Phase 4 : Fonctionnalités Avancées (💡 Idées)
+
 - [ ] Recommandations personnalisées
 - [ ] Mode hors-ligne
 - [ ] Export de certificats
